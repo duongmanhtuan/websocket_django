@@ -1,7 +1,8 @@
 ## game/routing.py
-from django.conf.urls import url
+# from django.conf.urls import url
+from django.urls import path
 from game.consumers import TicTacToeConsumer
 
 websocket_urlpatterns = [
-    url(r'^ws/$', TicTacToeConsumer.as_asgi()),
+    path('ws', TicTacToeConsumer.as_asgi()),
 ]

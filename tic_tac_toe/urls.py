@@ -15,11 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from game.views import index
+# from game.views import index
 from game.views import game
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', index),
-    path('play/<room_code>', game),
+    # path('', index),
+    path('play/<key>', game),
 ]

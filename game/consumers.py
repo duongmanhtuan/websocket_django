@@ -1,63 +1,93 @@
-## game/consumers.py
-import json
-from channels.generic.websocket import AsyncJsonWebsocketConsumer
+# ## game/consumers.py
+# import json
+# from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-class TicTacToeConsumer(AsyncJsonWebsocketConsumer):
-    async def connect(self):
-        # self.room_name = self.scope['url_route']['kwargs']['room_code']
-        self.room_name = "123"
-        self.room_group_name = 'room_%s' % self.room_name
+# class TicTacToeConsumer(AsyncJsonWebsocketConsumer):
+#     async def connect(self):
+#         # self.room_name = self.scope['url_route']['kwargs']['room_code']
+#         # self.room_name = "123"
+#         # self.room_group_name = 'room_%s' % 'test'
+#         print('ok')
+#         # Join room group
+#         await self.channel_layer.group_add(
+#             'Fii',
+#             self.channel_name
+#         )
+#         await self.accept()
 
-        # Join room group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
+#     async def disconnect(self, close_code):
+#         print("Disconnected")
+#         # Leave room group
+#         await self.channel_layer.group_discard(
+#             'Fii',
+#             self.channel_name
+#         )
 
-    async def disconnect(self, close_code):
-        print("Disconnected")
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+#     async def receive(self, text_data):
+#         """
+#         Receive message from WebSocket.
+#         Get the event and send the appropriate event
+#         """
+#         response = json.loads(text_data)
+#         data = 'testneeee'
+#         while True:
+#             self.send(text_data=json.dumps({
+#                 "payload": {
+#                                 'type': 'send_data',
+#                                 'data': data
+#                             },
+#             }))
+#             # await self.channel_layer.group_send('Fii', {
+#             #     'type': 'send_data',
+#             #     'data': data
+#             # })
 
-    async def receive(self, text_data):
-        """
-        Receive message from WebSocket.
-        Get the event and send the appropriate event
-        """
-        response = json.loads(text_data)
-        event = response.get("event", None)
-        message = response.get("message", None)
-        if event == 'MOVE':
-            # Send message to room group
-            await self.channel_layer.group_send(self.room_group_name, {
-                'type': 'send_message',
-                'message': message,
-                "event": "MOVE"
-            })
+#     async def send_data(self, res):
+#         """ Receive message from room group """
+#         # Send message to WebSocket
+#         await self.send(text_data=json.dumps({
+#             "payload": res,
+#         }))
+        
+        
+# import pyhik
+import base64
+import time
+import channels.generic.websocket
+import cv2
 
-        if event == 'START':
-            # Send message to room group
-            await self.channel_layer.group_send(self.room_group_name, {
-                'type': 'send_message',
-                'message': message,
-                'event': "START"
-            })
+class TicTacToeConsumer(channels.generic.websocket.WebsocketConsumer):
+    def connect(self):
+        # Connect to Hikvision NVR
+        # self.nvr = pyhik.HikCamera("<nvr_ip>", "<nvr_port>", "<nvr_user>", "<nvr_password>")
+        # self.nvr.login()
+        self.channel = None
+        self.channel_name = 'test'
+        self.accept()
 
-        if event == 'END':
-            # Send message to room group
-            await self.channel_layer.group_send(self.room_group_name, {
-                'type': 'send_message',
-                'message': message,
-                'event': "END"
-            })
+    def disconnect(self, close_code):
+        # Close the connection to Hikvision NVR
+        self.disconnect(code=close_code)
+        self.channel.stop()
+        # self.nvr.logout()
 
-    async def send_message(self, res):
-        """ Receive message from room group """
-        # Send message to WebSocket
-        await self.send(text_data=json.dumps({
-            "payload": res,
-        }))
+    def receive(self, text_data):
+        # Control Hikvision NVR and send video frames to client
+        rtsp_url = 'rtsp://192.168.22.119:8554/'
+        video_capture = cv2.VideoCapture(rtsp_url)
+        video_capture.set(cv2.CAP_PROP_FPS, 25)
+        while True:
+            ret, frame = video_capture.read()
+
+            if not ret:
+                break
+            # image = cv2.imread('Untitled.png')
+            # frame = self.channel.get_frame()
+            # frame = b'Hello, World!'
+            # Chuyển đổi ảnh thành base64
+            retval, buffer = cv2.imencode('.jpg', frame)
+            base64_image = base64.b64encode(buffer).decode('utf-8')
+            # encoded_frame = base64.b64encode(frame).decode('utf-8')
+            encoded_frame = base64_image
+            
+            self.send(encoded_frame)
